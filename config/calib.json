@@ -1,0 +1,53 @@
+{
+  "camera": {
+    "camera_model": "plumb_bob",
+    "distortion_coeffs": [
+      -0.140261,
+      0.022702,
+      0.001249,
+      -0.002815,
+      0.0
+    ],
+    "intrinsics": [
+      851.31751,
+      911.92538,
+      961.52687,
+      629.60832
+    ]
+  },
+  "meta": {
+    "bag_names": [
+      "calib1_0.db3",
+      "calib2_0.db3",
+      "calib3_0.db3",
+      "calib4_0.db3",
+      "calib5_0.db3",
+      "calib6_0.db3"
+    ],
+    "camera_info_topic": "/camera_info",
+    "data_path": "/home/pruning-team/Downloads/usu/allbags",
+    "image_topic": "/image_raw",
+    "intensity_channel": "intensity",
+    "points_topic": "/livox/lidar"
+  },
+  "results": {
+    "T_lidar_camera": [
+      0.016611758862352718,
+      0.003872525514552308,
+      -0.06873708340948441,
+      0.4276976468170657,
+      0.43199059079862145,
+      0.5577489752301957,
+      0.5651326684932215
+    ],
+    "init_T_lidar_camera": [
+      0.0265980064868927,
+      0.00549613730981946,
+      -0.07287739962339401,
+      0.4270622692639042,
+      0.4308757551966086,
+      0.5582452340310131,
+      0.565973636133185
+    ]
+  }
+}
