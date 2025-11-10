@@ -4,10 +4,10 @@ fusion_lidar_camera:
     use_roi: true
     roi_x: 0
     roi_y: 0
-    roi_width: 1920
-    roi_height: 1080
-    # roi_width: 640
-    # roi_height: 480
+    # roi_width: 1920
+    # roi_height: 1080
+    roi_width: 640
+    roi_height: 480
 
     # PCD保存設定
     save_pcd: false

@@ -37,6 +37,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(lidar_camera_fusion_node src/main.cpp src/fusion_node.cpp)
 add_executable(simple_lidar_camera_fusion_node src/simple_main.cpp)
 add_executable(test_lidar_camera_fusion_node src/test_main.cpp)
+add_executable(direct_camera_node src/direct_camera_node.cpp)
 
 
 # Target dependencies
@@ -67,6 +68,17 @@ ament_target_dependencies(test_lidar_camera_fusion_node
   pcl_conversions
 )
 
+ament_target_dependencies(direct_camera_node
+  rclcpp
+  sensor_msgs
+  cv_bridge
+  message_filters
+  pcl_conversions
+  tf2_eigen
+  tf2_geometry_msgs
+  yolo_msgs
+)
+
 # Link libraries
 target_link_libraries(lidar_camera_fusion_node
   ${OpenCV_LIBS}
@@ -83,11 +95,17 @@ target_link_libraries(test_lidar_camera_fusion_node
   ${PCL_LIBRARIES}
 )
 
+target_link_libraries(direct_camera_node
+  ${OpenCV_LIBS}
+  ${PCL_LIBRARIES}
+)
+
 # Install executables
 install(TARGETS
   lidar_camera_fusion_node
   simple_lidar_camera_fusion_node
   test_lidar_camera_fusion_node
+  direct_camera_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
