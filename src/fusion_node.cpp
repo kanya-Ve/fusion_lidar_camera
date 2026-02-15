@@ -18,7 +18,7 @@ namespace fusion_lidar_camera
         this->declare_parameter<int>("roi_width", 1920);
         this->declare_parameter<int>("roi_height", 1080);
         this->declare_parameter<bool>("save_pcd", false);
-        this->declare_parameter<int>("pcd_save_interval", 5);  // Save every N detections
+        this->declare_parameter<int>("pcd_save_interval", 5); // Save every N detections
 
         // Get parameters
         use_roi_ = this->get_parameter("use_roi").as_bool();
@@ -29,13 +29,18 @@ namespace fusion_lidar_camera
         save_pcd_ = this->get_parameter("save_pcd").as_bool();
         pcd_save_interval_ = this->get_parameter("pcd_save_interval").as_int();
 
+        save_pcd_ = false;
+        pcd_save_interval_ = 50;
+
         // Initialize calibration parameters
         initializeCalibrationParams();
 
         subscriber_points_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
             "/livox/lidar", 10, std::bind(&FusionLidarCamera::pointCloudCallback, this, std::placeholders::_1));
+        // subscriber_image_ = this->create_subscription<sensor_msgs::msg::Image>(
+        //     "/image_raw", 10, std::bind(&FusionLidarCamera::imageCallback, this, std::placeholders::_1));
         subscriber_image_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/image_raw/downsampled", 10, std::bind(&FusionLidarCamera::imageCallback, this, std::placeholders::_1));
+        "/image_raw/downsampled", 10, std::bind(&FusionLidarCamera::imageCallback, this, std::placeholders::_1));
         subscriber_detections_ = this->create_subscription<yolo_msgs::msg::DetectionArray>(
             "/yolo/detections", 10, std::bind(&FusionLidarCamera::detectionCallback, this, std::placeholders::_1));
 
@@ -74,7 +79,7 @@ namespace fusion_lidar_camera
         {
             RCLCPP_INFO(this->get_logger(), "ROI disabled - using full image");
         }
-        
+
         if (save_pcd_)
         {
             RCLCPP_INFO(this->get_logger(), "PCD saving enabled: interval=%d frames, output dir=/home/yakan/lidar_ws/pointcloud",
@@ -87,7 +92,7 @@ namespace fusion_lidar_camera
 
         RCLCPP_INFO(this->get_logger(), "Waiting for synchronized messages...");
         RCLCPP_INFO(this->get_logger(), "Output topics: /colored_pointcloud, /projected_image");
-        
+
         // Initialize scaling flags
         is_calibration_scaled_ = false;
         current_scale_x_ = 1.0;
@@ -133,9 +138,9 @@ namespace fusion_lidar_camera
 
         // Print calibration info
         RCLCPP_INFO(this->get_logger(), "Calibration parameters initialized");
-        RCLCPP_INFO(this->get_logger(), "Original intrinsics (1920x1280): fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-                   camera_matrix_.at<double>(0,0), camera_matrix_.at<double>(1,1), 
-                   camera_matrix_.at<double>(0,2), camera_matrix_.at<double>(1,2));
+        RCLCPP_INFO(this->get_logger(), "Original intrinsics (1920x1280): fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f",
+                    camera_matrix_.at<double>(0, 0), camera_matrix_.at<double>(1, 1),
+                    camera_matrix_.at<double>(0, 2), camera_matrix_.at<double>(1, 2));
         RCLCPP_INFO(this->get_logger(), "Translation: tx=%.4f, ty=%.4f, tz=%.4f", tx, ty, tz);
         RCLCPP_INFO(this->get_logger(), "Quaternion: qx=%.4f, qy=%.4f, qz=%.4f, qw=%.4f", qx, qy, qz, qw);
         RCLCPP_INFO(this->get_logger(), "Camera parameters will be scaled automatically based on input image size");
@@ -176,24 +181,24 @@ namespace fusion_lidar_camera
             // Original image size
             double orig_width = 1920.0;
             double orig_height = 1280.0;
-            
+
             // Calculate scaling factors based on actual image size
             current_scale_x_ = static_cast<double>(image_width) / orig_width;
             current_scale_y_ = static_cast<double>(image_height) / orig_height;
-            
+
             // Scale intrinsic parameters
-            camera_matrix_.at<double>(0, 0) *= current_scale_x_;  // fx
-            camera_matrix_.at<double>(1, 1) *= current_scale_y_;  // fy
-            camera_matrix_.at<double>(0, 2) *= current_scale_x_;  // cx
-            camera_matrix_.at<double>(1, 2) *= current_scale_y_;  // cy
-            
+            camera_matrix_.at<double>(0, 0) *= current_scale_x_; // fx
+            camera_matrix_.at<double>(1, 1) *= current_scale_y_; // fy
+            camera_matrix_.at<double>(0, 2) *= current_scale_x_; // cx
+            camera_matrix_.at<double>(1, 2) *= current_scale_y_; // cy
+
             is_calibration_scaled_ = true;
-            
+
             RCLCPP_INFO(this->get_logger(), "Auto-scaled calibration for image size %dx%d", image_width, image_height);
             RCLCPP_INFO(this->get_logger(), "Scaling factors: x=%.4f, y=%.4f", current_scale_x_, current_scale_y_);
-            RCLCPP_INFO(this->get_logger(), "Scaled intrinsics: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f", 
-                       camera_matrix_.at<double>(0,0), camera_matrix_.at<double>(1,1), 
-                       camera_matrix_.at<double>(0,2), camera_matrix_.at<double>(1,2));
+            RCLCPP_INFO(this->get_logger(), "Scaled intrinsics: fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f",
+                        camera_matrix_.at<double>(0, 0), camera_matrix_.at<double>(1, 1),
+                        camera_matrix_.at<double>(0, 2), camera_matrix_.at<double>(1, 2));
         }
     }
 
@@ -210,10 +215,9 @@ namespace fusion_lidar_camera
         _buffer_pointcloud.push_back({std::chrono::steady_clock::now(), msg});
         if (_buffer_pointcloud.size() > _buffer_size)
         {
-            _buffer_pointcloud.pop_front();  // Maintain buffer size
+            _buffer_pointcloud.pop_front(); // Maintain buffer size
         }
-        RCLCPP_INFO(this->get_logger(), "PointCloud2 Length: %zu",
-                     _buffer_pointcloud.size());
+        // RCLCPP_INFO(this->get_logger(), "PointCloud2 Length: %zu", _buffer_pointcloud.size());
         // RCLCPP_INFO(this->get_logger(), "点群タイムスタンプ: %f",
         //            msg->header.stamp.sec + msg->header.stamp.nanosec * 1e-9);
         // 必要に応じて点群を処理
@@ -262,9 +266,9 @@ namespace fusion_lidar_camera
                 closest_pointcloud = timed_msg;
             }
         }
-    
+
         RCLCPP_INFO(this->get_logger(), "Using PointCloud2 timestamp: %f",
-                     closest_pointcloud.msg->header.stamp.sec + closest_pointcloud.msg->header.stamp.nanosec * 1e-9);
+                    closest_pointcloud.msg->header.stamp.sec + closest_pointcloud.msg->header.stamp.nanosec * 1e-9);
 
         // Call the main processing function
         callback(closest_pointcloud.msg, _image, _detections);
@@ -282,10 +286,10 @@ namespace fusion_lidar_camera
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
             cv::Mat image = cv_ptr->image;
             cv::Mat projected_image = image.clone();
-            
+
             // Auto-scale calibration parameters based on actual image size
             scaleCalibrationParams(image.cols, image.rows);
-            
+
             RCLCPP_INFO_ONCE(this->get_logger(), "Image size: %dx%d", image.cols, image.rows);
 
             // Convert ROS pointcloud to PCL
@@ -296,12 +300,12 @@ namespace fusion_lidar_camera
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
             // Classify points by detections (分別処理)
-            auto [detection_clouds, colored_detection_clouds] = 
+            auto [detection_clouds, colored_detection_clouds] =
                 classifyPointsByDetections(cloud, image_msg, detections_msg, colored_cloud, projected_image);
 
             // Publish results and save PCD files (描画・保存処理)
-            publishAndSaveResults(detection_clouds, colored_detection_clouds, colored_cloud, projected_image, 
-                                cloud_msg, image_msg, detections_msg);
+            publishAndSaveResults(detection_clouds, colored_detection_clouds, colored_cloud, projected_image,
+                                  cloud_msg, image_msg, detections_msg);
         }
         catch (const std::exception &e)
         {
@@ -309,13 +313,13 @@ namespace fusion_lidar_camera
         }
     }
 
-    std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>> 
+    std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>, std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>>
     FusionLidarCamera::classifyPointsByDetections(
-        const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud,
-        const sensor_msgs::msg::Image::ConstSharedPtr& image_msg,
-        const yolo_msgs::msg::DetectionArray::ConstSharedPtr& detections_msg,
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr& colored_cloud,
-        cv::Mat& projected_image)
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud,
+        const sensor_msgs::msg::Image::ConstSharedPtr &image_msg,
+        const yolo_msgs::msg::DetectionArray::ConstSharedPtr &detections_msg,
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr &colored_cloud,
+        cv::Mat &projected_image)
     {
         // Convert ROS image to OpenCV for color extraction
         cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
@@ -392,15 +396,15 @@ namespace fusion_lidar_camera
                     {
                         // Add colored point to detection-specific colored cloud
                         cv::Vec3b bgr_detection = image.at<cv::Vec3b>(v, u);
-                        
+
                         // Apply green color filtering for detection clouds too
                         double H_detection = rgb2hue(bgr_detection[2], bgr_detection[1], bgr_detection[0]);
-                        
+
                         // Only add points that are not green (Hue outside 100-140 degrees)
                         if (H_detection < 100.0 || H_detection > 140.0)
                         {
                             cloud_vec[detection_index]->points.push_back(point);
-                            
+
                             pcl::PointXYZRGB colored_detection_point;
                             colored_detection_point.x = point.x;
                             colored_detection_point.y = point.y;
@@ -415,7 +419,7 @@ namespace fusion_lidar_camera
                         }
 
                         //////////////////////////////////////ここに注意してよーん　緑フィルター
-                            // colored_cloud_vec[detection_index]->points.push_back(colored_detection_point);
+                        // colored_cloud_vec[detection_index]->points.push_back(colored_detection_point);
 
                         // Draw detection bounding box on image
                         cv::rectangle(projected_image,
@@ -461,11 +465,13 @@ namespace fusion_lidar_camera
             }
         }
 
+        // 　ここまでですべての点群の処理が終わっている
+
         // Set cloud properties
         colored_cloud->width = colored_cloud->points.size();
         colored_cloud->height = 1;
         colored_cloud->is_dense = false;
-        
+
         // Set properties for each detection colored cloud
         for (size_t i = 0; i < colored_cloud_vec.size(); ++i)
         {
@@ -493,14 +499,22 @@ namespace fusion_lidar_camera
         return std::make_pair(cloud_vec, colored_cloud_vec);
     }
 
+    // void FusionLidarCAmera::performRANSAC()
+    // {
+    //     // RANSAC implementation placeholder
+    //     RCLCPP_INFO(this->get_logger(), "RANSAC function called - implementation pending");
+
+    // }
+
+    // このへんはビジュアライズ等
     void FusionLidarCamera::publishAndSaveResults(
-        const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>& detection_clouds,
-        const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr>& colored_detection_clouds,
-        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& colored_cloud,
-        const cv::Mat& projected_image,
-        const sensor_msgs::msg::PointCloud2::ConstSharedPtr& cloud_msg,
-        const sensor_msgs::msg::Image::ConstSharedPtr& image_msg,
-        const yolo_msgs::msg::DetectionArray::ConstSharedPtr& detections_msg)
+        const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &detection_clouds,
+        const std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> &colored_detection_clouds,
+        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &colored_cloud,
+        const cv::Mat &projected_image,
+        const sensor_msgs::msg::PointCloud2::ConstSharedPtr &cloud_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &image_msg,
+        const yolo_msgs::msg::DetectionArray::ConstSharedPtr &detections_msg)
     {
         // Publish colored point cloud
         sensor_msgs::msg::PointCloud2 colored_cloud_msg;
@@ -515,14 +529,50 @@ namespace fusion_lidar_camera
         projected_cv_image.image = projected_image;
         pub_projected_image_->publish(*projected_cv_image.toImageMsg());
 
+        if (save_pcd_ && (pcd_counter_ % pcd_save_interval_ == 0))
+        {
+            save_counter_++;
+
+            // 保存ディレクトリ
+            std::string img_dir = "/home/yakan/lidar_ws/pointcloud_trunk4";
+            if (!std::filesystem::exists(img_dir))
+            {
+                std::filesystem::create_directories(img_dir);
+                RCLCPP_INFO(this->get_logger(), "Created image output directory: %s", img_dir.c_str());
+            }
+
+            // Image → cv::Mat 変換済み
+            sensor_msgs::msg::Image projected_image_msg;
+            cv_bridge::CvImage projected_cv_image;
+            projected_cv_image.header = image_msg->header;
+            projected_cv_image.encoding = sensor_msgs::image_encodings::BGR8;
+            projected_cv_image.image = projected_image;
+            projected_image_msg = *projected_cv_image.toImageMsg();
+
+            // 時刻取得
+            auto now = std::chrono::system_clock::now();
+            auto time_t = std::chrono::system_clock::to_time_t(now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          now.time_since_epoch()) %
+                      1000;
+
+            // ファイル名作成
+            std::stringstream filename;
+            filename << img_dir << "/detection_move" << std::to_string(save_counter_)
+                     << ".png";
+
+            // 保存
+            cv::imwrite(filename.str(), projected_image);
+            RCLCPP_INFO(this->get_logger(), "Saved image: %s", filename.str().c_str());
+        }
+
         // Publish point clouds for each detection and save as PCD files
         for (size_t i = 0; i < detection_clouds.size(); ++i)
         {
             if (!detection_clouds[i]->points.empty())
             {
                 // Get class name for this detection
-                std::string class_name = (i < detections_msg->detections.size()) ? 
-                                       detections_msg->detections[i].class_name : "unknown";
+                std::string class_name = (i < detections_msg->detections.size()) ? detections_msg->detections[i].class_name : "unknown";
 
                 // Use colored detection cloud for publishing
                 sensor_msgs::msg::PointCloud2 detection_cloud_msg;
@@ -543,39 +593,42 @@ namespace fusion_lidar_camera
                 // Save point cloud as PCD file (if enabled and at specified interval)
                 if (save_pcd_ && (pcd_counter_ % pcd_save_interval_ == 0))
                 {
+                    std::cout << "Saving PCD for detection " << i << " (" << class_name << ") with "
+                              << colored_detection_clouds[i]->points.size() << " points." << std::endl;
                     // Create timestamp string for unique filename
                     auto now = std::chrono::system_clock::now();
                     auto time_t = std::chrono::system_clock::to_time_t(now);
                     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        now.time_since_epoch()) % 1000;
-                    
+                                  now.time_since_epoch()) %
+                              1000;
+
                     std::stringstream timestamp_ss;
                     timestamp_ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
                     timestamp_ss << "_" << std::setfill('0') << std::setw(3) << ms.count();
-                    
+
                     // Create output directory if it doesn't exist
-                    std::string pcd_dir = "/home/yakan/lidar_ws/pointcloud";
+                    std::string pcd_dir = "/home/yakan/lidar_ws/pointcloud_trunk4";
                     if (!std::filesystem::exists(pcd_dir))
                     {
                         std::filesystem::create_directories(pcd_dir);
                         RCLCPP_INFO(this->get_logger(), "Created PCD output directory: %s", pcd_dir.c_str());
                     }
-                    
-                    std::string pcd_filename = pcd_dir + "/detection_move_" + 
-                                             std::to_string(i) + "_" + class_name + "_" + 
-                                             timestamp_ss.str() + ".pcd";
-                    
+
+                    std::string pcd_filename = pcd_dir + "/detection_move" + std::to_string(save_counter_) + "_" +
+                                               std::to_string(i) + "_" + class_name + "_" +
+                                               timestamp_ss.str() + ".pcd";
+
                     // Save point cloud as PCD file (binary format for efficiency)
                     if (pcl::io::savePCDFileBinary(pcd_filename, *colored_detection_clouds[i]) == 0)
                     {
                         RCLCPP_INFO(this->get_logger(),
-                                   "Saved detection %zu (%s) colored point cloud to: %s (%zu points)",
-                                   i, class_name.c_str(), pcd_filename.c_str(), colored_detection_clouds[i]->points.size());
+                                    "Saved detection %zu (%s) colored point cloud to: %s (%zu points)",
+                                    i, class_name.c_str(), pcd_filename.c_str(), colored_detection_clouds[i]->points.size());
                     }
                     else
                     {
                         RCLCPP_ERROR(this->get_logger(),
-                                    "Failed to save PCD file: %s", pcd_filename.c_str());
+                                     "Failed to save PCD file: %s", pcd_filename.c_str());
                     }
                 }
 
@@ -601,38 +654,38 @@ namespace fusion_lidar_camera
                 empty_cloud_msg.width = 0;
                 empty_cloud_msg.is_dense = true;
                 empty_cloud_msg.is_bigendian = false;
-                
+
                 // Set up point cloud fields for XYZRGB
                 empty_cloud_msg.fields.resize(6);
-                
+
                 empty_cloud_msg.fields[0].name = "x";
                 empty_cloud_msg.fields[0].offset = 0;
                 empty_cloud_msg.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
                 empty_cloud_msg.fields[0].count = 1;
-                
+
                 empty_cloud_msg.fields[1].name = "y";
                 empty_cloud_msg.fields[1].offset = 4;
                 empty_cloud_msg.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
                 empty_cloud_msg.fields[1].count = 1;
-                
+
                 empty_cloud_msg.fields[2].name = "z";
                 empty_cloud_msg.fields[2].offset = 8;
                 empty_cloud_msg.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
                 empty_cloud_msg.fields[2].count = 1;
-                
+
                 empty_cloud_msg.fields[3].name = "rgb";
                 empty_cloud_msg.fields[3].offset = 12;
                 empty_cloud_msg.fields[3].datatype = sensor_msgs::msg::PointField::FLOAT32;
                 empty_cloud_msg.fields[3].count = 1;
-                
+
                 empty_cloud_msg.point_step = 16;
                 empty_cloud_msg.row_step = 0;
                 empty_cloud_msg.data.clear();
-                
+
                 pub_detection_clouds_[i]->publish(empty_cloud_msg);
             }
         }
-        
+
         // Clear any remaining unused publishers with empty clouds
         // This handles the case where detection count decreases
         for (size_t i = detection_clouds.size(); i < pub_detection_clouds_.size(); ++i)
@@ -644,37 +697,37 @@ namespace fusion_lidar_camera
             empty_cloud_msg.width = 0;
             empty_cloud_msg.is_dense = true;
             empty_cloud_msg.is_bigendian = false;
-            
+
             // Set up point cloud fields for XYZRGB
             empty_cloud_msg.fields.resize(4);
-            
+
             empty_cloud_msg.fields[0].name = "x";
             empty_cloud_msg.fields[0].offset = 0;
             empty_cloud_msg.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
             empty_cloud_msg.fields[0].count = 1;
-            
+
             empty_cloud_msg.fields[1].name = "y";
             empty_cloud_msg.fields[1].offset = 4;
             empty_cloud_msg.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
             empty_cloud_msg.fields[1].count = 1;
-            
+
             empty_cloud_msg.fields[2].name = "z";
             empty_cloud_msg.fields[2].offset = 8;
             empty_cloud_msg.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
             empty_cloud_msg.fields[2].count = 1;
-            
+
             empty_cloud_msg.fields[3].name = "rgb";
             empty_cloud_msg.fields[3].offset = 12;
             empty_cloud_msg.fields[3].datatype = sensor_msgs::msg::PointField::FLOAT32;
             empty_cloud_msg.fields[3].count = 1;
-            
+
             empty_cloud_msg.point_step = 16;
             empty_cloud_msg.row_step = 0;
             empty_cloud_msg.data.clear();
-            
+
             pub_detection_clouds_[i]->publish(empty_cloud_msg);
         }
-        
+
         // Increment PCD counter for save interval control
         if (save_pcd_)
         {
@@ -682,7 +735,8 @@ namespace fusion_lidar_camera
         }
     }
 
-    double FusionLidarCamera::rgb2hue(int r, int g, int b) {
+    double FusionLidarCamera::rgb2hue(int r, int g, int b)
+    {
         // 0-255 → 0-1 に正規化
         double R = r / 255.0;
         double G = g / 255.0;
@@ -694,17 +748,25 @@ namespace fusion_lidar_camera
 
         double h = 0.0;
 
-        if (delta == 0) {
-            h = 0.0;  // 無彩色（グレー系）は Hue=0 とする
-        } else if (cmax == R) {
+        if (delta == 0)
+        {
+            h = 0.0; // 無彩色（グレー系）は Hue=0 とする
+        }
+        else if (cmax == R)
+        {
             h = 60.0 * fmod(((G - B) / delta), 6.0);
-        } else if (cmax == G) {
+        }
+        else if (cmax == G)
+        {
             h = 60.0 * (((B - R) / delta) + 2.0);
-        } else { // cmax == B
+        }
+        else
+        { // cmax == B
             h = 60.0 * (((R - G) / delta) + 4.0);
         }
 
-        if (h < 0) h += 360.0;
+        if (h < 0)
+            h += 360.0;
         return h;
     }
 

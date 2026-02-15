@@ -15,6 +15,11 @@
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
 
+//for RANSAC
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+
 namespace fusion_lidar_camera
 {
 
@@ -71,6 +76,7 @@ private:
     bool save_pcd_;
     int pcd_save_interval_;
     int pcd_counter_ = 0;
+    int save_counter_ = 0;
 
     // Private methods
     void initializeCalibrationParams();
@@ -115,6 +121,11 @@ private:
 
     std::deque<TimedMsg> _buffer_pointcloud;
     size_t _buffer_size = 30;  // Size of the buffer for point clouds
+    std::deque<sensor_msgs::msg::Image::ConstSharedPtr> _buffer_image;
+    
+
+    //RANSAC
+    void performRANSAC();
 
     void process();
 };

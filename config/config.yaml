@@ -10,5 +10,5 @@ fusion_lidar_camera:
     roi_height: 480
 
     # PCD保存設定
-    save_pcd: false
-    pcd_save_interval: 5
+    save_pcd: true
+    pcd_save_interval: 20
